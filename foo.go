@@ -5,34 +5,54 @@ package main
 import (
 	. "fmt"
 	"runtime"
-	"time"
+	//"time"
 )
 
-var i = 0
 
-func incrementing() {
-	for j := 0; j < 1000000; j++ {
-		i += 1
+func server(increment chan int, decrement chan int, get_value chan int) {
+	var i = 0
+	for {
+		select {
+			case <- increment:
+				i += 1
+			case <- decrement:
+				i-= 1
+			case get_value <- i:
+
+
 	}
-	//TODO: increment i 1000000 times
+}
 }
 
-func decrementing() {
-	//TODO: decrement i 1000000 times
-	for j := 0; j < 1000000; j++ {
-		i -= 1
+func incrementing(increment chan int, quit_inc chan int) {
+	for j := 0; j < 999999; j++ {
+		increment <- 0
 	}
+	quit_inc <- 1
+}
+
+func decrementing(decrement chan int, quit_dec chan int) {
+	for j := 0; j < 1000000; j++ {
+		decrement <- 0
+	}
+	quit_dec <- 1
+
 }
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU()) // I guess this is a hint to what GOMAXPROCS does...
-	go incrementing()
-	go decrementing() // Try doing the exercise both with and without it!
+	increment := make (chan int)
+	decrement := make (chan int)
+	get_value := make (chan int)
+	quit := make (chan int)
 
-	// TODO: Spawn both functions as goroutines
+	go incrementing(increment, quit)
+	go decrementing(decrement, quit)
+	go server(increment, decrement, get_value)
 
-	// We have no way to wait for the completion of a goroutine (without additional syncronization of some sort)
-	// We'll come back to using channels in Exercise 2. For now: Sleep.
-	time.Sleep(100 * time.Millisecond)
-	Println("The magic number is:", i)
+	<- quit
+	<- quit
+
+	Println("The magic number is:", <-get_value)
+
 }
